@@ -4,5 +4,6 @@
   "description": "PHP implementation of the Synapse Admin API v2",
   "require": {
     "aryess/php-matrix-sdk": "^1"
-  }
+  },
+  "license": "MIT"
 }
