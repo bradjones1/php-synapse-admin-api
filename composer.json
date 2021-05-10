@@ -4,7 +4,9 @@
     "description": "PHP implementation of the Synapse Admin API v2",
     "require": {
         "php": "^7.4",
-        "psr/http-client": "^1"
+        "psr/http-client": "^1",
+        "psr/http-factory": "^1",
+        "ext-json": "*"
     },
     "license": "MIT",
     "autoload": {
