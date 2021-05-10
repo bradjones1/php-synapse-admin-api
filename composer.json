@@ -1,0 +1,8 @@
+{
+  "name": "bradjones1/php-synapse-admin-api",
+  "minimum-stability": "dev",
+  "description": "PHP implementation of the Synapse Admin API v2",
+  "require": {
+    "aryess/php-matrix-sdk": "^1"
+  }
+}
