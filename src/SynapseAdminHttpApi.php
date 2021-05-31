@@ -35,9 +35,9 @@ class SynapseAdminHttpApi {
   /**
    * Authorization string for admin user.
    *
-   * @var string
+   * @var string|NULL
    */
-  protected $token;
+  protected $token = NULL;
 
   /**
    * Base URL of homeserver.
@@ -55,13 +55,24 @@ class SynapseAdminHttpApi {
    *   HTTP request factory.
    * @param string $baseUrl
    *   Base URL for homeserver.
-   * @param string $token
+   * @param string|NULL $token
    *   Authorization string for admin user.
    */
-  public function __construct(ClientInterface $httpClient, RequestFactoryInterface $requestFactory, string $baseUrl, string $token) {
+  public function __construct(ClientInterface $httpClient, RequestFactoryInterface $requestFactory, string $baseUrl, ?string $token = NULL) {
     $this->httpClient = $httpClient;
     $this->requestFactory = $requestFactory;
     $this->baseUrl = $baseUrl;
+    if ($token) {
+      $this->setAdminAccessToken($token);
+    }
+  }
+
+  /**
+   * Set the access token.
+   *
+   * @param string $token
+   */
+  public function setAdminAccessToken(string $token): void {
     $this->token = $token;
   }
 
@@ -79,23 +90,50 @@ class SynapseAdminHttpApi {
    * @throws \Psr\Http\Client\ClientExceptionInterface
    */
   protected function send(string $method, string $relativeUrl, ?string $payload = NULL): ResponseInterface {
+    assert(!($method === 'GET' && !is_null($payload)), 'GET is incompatible with payload.');
     $request = $this->requestFactory
       ->createRequest($method, $this->baseUrl . '/_synapse/admin/' . $relativeUrl);
     if ($payload) {
       $request->getBody()->write($payload);
     }
-    return $this->httpClient->sendRequest(
-      $request
-        ->withAddedHeader('authorization', 'Bearer ' . $this->token)
-    );
+    if ($this->token) {
+      $request = $request
+        ->withAddedHeader('authorization', 'Bearer ' . $this->token);
+    }
+    $response = $this->httpClient->sendRequest($request);
+    if ($response->getStatusCode() >= 300 && $response->getStatusCode() < 500) {
+      $returnedContent = $response->getBody()->getContents();
+      $json = json_decode($returnedContent, TRUE);
+      $message = !empty($json['error'])
+        ? $json['error']
+        : $response->getReasonPhrase();
+      throw new ClientException($message, $response->getStatusCode());
+    }
+    return $response;
   }
 
   /**
    * Register a user noninteractively.
    *
    * @see https://github.com/matrix-org/synapse/blob/master/docs/admin_api/register_api.rst
+   *
+   * @param string $registrationSharedSecret
+   *   Registration shared secret.
+   * @param string $username
+   *   Username.
+   * @param string $password
+   *   Password.
+   * @param bool $admin
+   *   Should be admin?
+   * @param string $displayName
+   *   Display name.
+   *
+   * @return array
+   *   Array of returned user data.
+   *
+   * @throws \Psr\Http\Client\ClientExceptionInterface
    */
-  public function registerUser(string $registrationSharedSecret, string $username, string $password, bool $admin = FALSE, string $displayName = '') {
+  public function registerUser(string $registrationSharedSecret, string $username, string $password, bool $admin = FALSE, string $displayName = ''): array {
     // Fetch nonce.
     $nonceResponse = $this->send('GET', 'v1/register');
     $nonce = json_decode($nonceResponse->getBody()->getContents(), TRUE)['nonce'];
@@ -115,11 +153,61 @@ class SynapseAdminHttpApi {
       'mac' => $mac,
     ];
     $response = $this->send('POST', 'v1/register', json_encode($payload));
-    $text = $response->getBody()->getContents();
+    return json_decode($response->getBody()->getContents(), TRUE);
   }
 
   /**
-   * Return a SHA256 hex HMAC digest of a payload.
+   * Query user information.
+   *
+   * @param string $userId
+   *   User ID, e.g. "@admin:localhost"
+   *
+   * @return array
+   *   Array of user data.
+   *
+   * @throws \Psr\Http\Client\ClientExceptionInterface
+   */
+  public function queryUser(string $userId): array {
+    $returned = $this->send('GET', "v2/users/$userId");
+    return json_decode($returned->getBody()->getContents(), TRUE);
+  }
+
+  /**
+   * Query room members.
+   *
+   * @param string $roomId
+   *   Room ID.
+   *
+   * @return array
+   *   Array of room members data (members and total.)
+   *
+   * @throws \Psr\Http\Client\ClientExceptionInterface
+   */
+  public function queryRoomMembers(string $roomId): array {
+    $returned = $this->send('GET', "v1/rooms/$roomId/members");
+    return json_decode($returned->getBody()->getContents(), TRUE);
+  }
+
+  /**
+   * Join a user to a room.
+   *
+   * @param string $roomId
+   *   Room ID or alias.
+   * @param string $userId
+   *   User ID.
+   *
+   * @throws \Psr\Http\Client\ClientExceptionInterface
+   */
+  public function joinUserToRoom(string $roomId, string $userId): void {
+    $returned = $this->send(
+      'POST',
+      "v1/join/$roomId",
+      json_encode(['user_id' => $userId])
+    );
+  }
+
+  /**
+   * Return a SHA1 hex HMAC digest of a payload.
    *
    * @param array $payload
    *   Elements of the hash, as defined by the spec.
