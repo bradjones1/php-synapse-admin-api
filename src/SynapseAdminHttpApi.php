@@ -199,10 +199,21 @@ class SynapseAdminHttpApi {
    * @throws \Psr\Http\Client\ClientExceptionInterface
    */
   public function joinUserToRoom(string $roomId, string $userId): void {
-    $returned = $this->send(
+    $this->send(
       'POST',
       "v1/join/$roomId",
       json_encode(['user_id' => $userId])
+    );
+  }
+
+  public function deleteRoom(string $roomId, bool $block = TRUE, bool $purge = TRUE): void {
+    $this->send(
+      'DELETE',
+      "v1/rooms/$roomId",
+      json_encode([
+        'block' => $block,
+        'purge' => $purge,
+      ])
     );
   }
 
