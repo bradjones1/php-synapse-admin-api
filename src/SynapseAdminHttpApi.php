@@ -175,6 +175,8 @@ class SynapseAdminHttpApi {
   /**
    * Query room members.
    *
+   * @see https://github.com/matrix-org/synapse/blob/master/docs/admin_api/rooms.md#room-members-api
+   *
    * @param string $roomId
    *   Room ID.
    *
@@ -185,6 +187,24 @@ class SynapseAdminHttpApi {
    */
   public function queryRoomMembers(string $roomId): array {
     $returned = $this->send('GET', "v1/rooms/$roomId/members");
+    return json_decode($returned->getBody()->getContents(), TRUE);
+  }
+
+  /**
+   * Query room details.
+   * 
+   * @see https://github.com/matrix-org/synapse/blob/master/docs/admin_api/rooms.md#room-details-api
+   * 
+   * @param string $roomId
+   *   Room ID.
+   *
+   * @return string[]
+   *   Associative array of room data.
+   *
+   * @throws \Psr\Http\Client\ClientExceptionInterface
+   */
+  public function queryRoom(string $roomId): array {
+    $returned = $this->send('GET', "v1/rooms/$roomId");
     return json_decode($returned->getBody()->getContents(), TRUE);
   }
 
@@ -206,6 +226,20 @@ class SynapseAdminHttpApi {
     );
   }
 
+  /**
+   * Delete a room.
+   * 
+   * @param string $roomId
+   *   Room ID.
+   * @param bool $block
+   *   Whether to block.
+   * @param bool $purge
+   *   Whether to purge.
+   *
+   * @return void
+   * 
+   * @throws \Psr\Http\Client\ClientExceptionInterface
+   */
   public function deleteRoom(string $roomId, bool $block = TRUE, bool $purge = TRUE): void {
     $this->send(
       'DELETE',
@@ -213,6 +247,28 @@ class SynapseAdminHttpApi {
       json_encode([
         'block' => $block,
         'purge' => $purge,
+      ])
+    );
+  }
+
+  /**
+   * Set a user's password.
+   * 
+   * @param string $userId
+   *   User ID.
+   * @param string $password
+   *   New password.
+   *
+   * @return void
+   * 
+   * @throws \Psr\Http\Client\ClientExceptionInterface
+   */
+  public function setUserPassword(string $userId, string $password): void {
+    $this->send(
+      'PUT',
+      sprintf('v2/users/%s', $userId),
+      json_encode([
+        'password' => $password,
       ])
     );
   }
