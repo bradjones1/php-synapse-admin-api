@@ -104,10 +104,14 @@ class SynapseAdminHttpApi {
     if ($response->getStatusCode() >= 300 && $response->getStatusCode() < 500) {
       $returnedContent = $response->getBody()->getContents();
       $json = json_decode($returnedContent, TRUE);
-      $message = !empty($json['error'])
-        ? $json['error']
-        : $response->getReasonPhrase();
-      throw new ClientException($message, $response->getStatusCode());
+      throw new ClientException(
+        !empty($json['error'])
+          ? $json['error']
+          : $response->getReasonPhrase(),
+        $response->getStatusCode(),
+        NULL,
+        $json['errcode'] ?? NULL
+      );
     }
     return $response;
   }
@@ -192,9 +196,9 @@ class SynapseAdminHttpApi {
 
   /**
    * Query room details.
-   * 
+   *
    * @see https://github.com/matrix-org/synapse/blob/master/docs/admin_api/rooms.md#room-details-api
-   * 
+   *
    * @param string $roomId
    *   Room ID.
    *
@@ -228,7 +232,7 @@ class SynapseAdminHttpApi {
 
   /**
    * Delete a room.
-   * 
+   *
    * @param string $roomId
    *   Room ID.
    * @param bool $block
@@ -237,7 +241,7 @@ class SynapseAdminHttpApi {
    *   Whether to purge.
    *
    * @return void
-   * 
+   *
    * @throws \Psr\Http\Client\ClientExceptionInterface
    */
   public function deleteRoom(string $roomId, bool $block = TRUE, bool $purge = TRUE): void {
@@ -253,14 +257,14 @@ class SynapseAdminHttpApi {
 
   /**
    * Set a user's password.
-   * 
+   *
    * @param string $userId
    *   User ID.
    * @param string $password
    *   New password.
    *
    * @return void
-   * 
+   *
    * @throws \Psr\Http\Client\ClientExceptionInterface
    */
   public function setUserPassword(string $userId, string $password): void {
