@@ -161,6 +161,16 @@ class SynapseAdminHttpApi {
   }
 
   /**
+   * Deactivate a user.
+   * 
+   * @param string $userId
+   *   User ID.
+   */
+  public function deactivateUser(string $userId): void {
+    $this->send('POST', "v1/deactivate/$userId");
+  }
+  
+  /**
    * Query user information.
    *
    * @param string $userId
