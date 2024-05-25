@@ -12,10 +12,11 @@ class ClientException extends \Exception implements ClientExceptionInterface {
   /**
    * {@inheritDoc}
    */
-  #[Pure] public function __construct(
+  #[Pure]
+  public function __construct(
     string $message = "",
     int $code = 0,
-    ?Throwable $previous = NULL,
+    ?\Throwable $previous = NULL,
     public readonly ?string $errCode = NULL,
   ) {
     parent::__construct($message, $code, $previous);
